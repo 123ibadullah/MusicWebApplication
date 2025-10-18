@@ -14,14 +14,19 @@ const SESSION_KEY = 'mwa_session_v1';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(SESSION_KEY);
-      if (saved) setUser(JSON.parse(saved));
+      if (saved) {
+        setUser(JSON.parse(saved));
+      }
     } catch (e) {
       console.error('Failed to load session', e);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -38,6 +43,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem(USERS_KEY, JSON.stringify(saved));
     localStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
     setUser(newUser);
+    // Force a small delay to ensure state is updated
+    await new Promise(resolve => setTimeout(resolve, 10));
     return newUser;
   };
 
@@ -47,6 +54,8 @@ export const AuthProvider = ({ children }) => {
     if (!found) throw new Error('Invalid credentials');
     localStorage.setItem(SESSION_KEY, JSON.stringify(found));
     setUser(found);
+    // Force a small delay to ensure state is updated
+    await new Promise(resolve => setTimeout(resolve, 10));
     return found;
   };
 
@@ -59,6 +68,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isAuthenticated: !!user,
+    isLoading,
     signup,
     login,
     logout,
