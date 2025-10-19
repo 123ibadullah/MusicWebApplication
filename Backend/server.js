@@ -6,11 +6,13 @@ import connectDB from "./src/config/mongodb.js";
 import connectCloudinary from "./src/config/cloudinary.js";
 import albumRouter from "./src/routes/albumRouter.js";
 import playlistRouter from "./src/routes/playlistRouter.js";
+import authRouter from "./src/routes/authRoutes.js";
 
 // Import models to ensure they're registered before routes
 import "./src/models/songModel.js";
 import "./src/models/albumModel.js";
 import "./src/models/playlistModel.js";
+import "./src/models/userModel.js";
 
 // App config
 const app = express();
@@ -63,6 +65,7 @@ app.get("/api/health", async (req, res) => {
 });
 
 // API routes
+app.use("/api/auth", authRouter);
 app.use("/api/song", songRouter);
 app.use("/api/album", albumRouter);
 app.use("/api/playlist", playlistRouter);

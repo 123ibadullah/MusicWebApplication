@@ -15,7 +15,7 @@ import Navbar from "./Navbar";
 import { usePlayer } from "../context/PlayerContext";
 
 const Display = ({ onOpenMobileSidebar }) => {
-  const { albumsData, searchQuery } = usePlayer();
+  const { albumsData } = usePlayer();
   const displayRef = useRef();
   const location = useLocation();
   

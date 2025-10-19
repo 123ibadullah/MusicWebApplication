@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const AuthContext = createContext();
 
@@ -9,60 +10,158 @@ export const useAuth = () => {
   return ctx;
 };
 
-const USERS_KEY = 'mwa_users_v1';
-const SESSION_KEY = 'mwa_session_v1';
+const API_BASE_URL = 'http://localhost:4000/api';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Configure axios defaults
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(SESSION_KEY);
-      if (saved) {
-        setUser(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.error('Failed to load session', e);
-    } finally {
-      setIsLoading(false);
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
   }, []);
 
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          // Verify token with backend
+          const response = await axios.get(`${API_BASE_URL}/auth/profile`);
+          if (response.data.success) {
+            setUser(response.data.data.user);
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem('auth_token');
+            delete axios.defaults.headers.common['Authorization'];
+          }
+        }
+      } catch (error) {
+        // Token is invalid or expired
+        localStorage.removeItem('auth_token');
+        delete axios.defaults.headers.common['Authorization'];
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
+
   const signup = async ({ name, email, password }) => {
-    if (!email || !password || !name) {
-      throw new Error('Missing fields');
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
+        name,
+        email,
+        password
+      });
+
+      if (response.data.success) {
+        const { user: userData, token } = response.data.data;
+        
+        // Store token and user data
+        localStorage.setItem('auth_token', token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(userData);
+        
+        return userData;
+      } else {
+        throw new Error(response.data.message || 'Registration failed');
+      }
+    } catch (error) {
+      let message = 'Registration failed';
+      
+      if (error.response?.data?.errors) {
+        // Handle validation errors
+        message = error.response.data.errors.join(', ');
+      } else if (error.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      throw new Error(message);
     }
-    const saved = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    if (saved.find(u => u.email === email)) {
-      throw new Error('User already exists');
-    }
-    const newUser = { id: Date.now().toString(), name, email, password };
-    saved.push(newUser);
-    localStorage.setItem(USERS_KEY, JSON.stringify(saved));
-    localStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
-    setUser(newUser);
-    // Force a small delay to ensure state is updated
-    await new Promise(resolve => setTimeout(resolve, 10));
-    return newUser;
   };
 
   const login = async ({ email, password }) => {
-    const saved = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    const found = saved.find(u => u.email === email && u.password === password);
-    if (!found) throw new Error('Invalid credentials');
-    localStorage.setItem(SESSION_KEY, JSON.stringify(found));
-    setUser(found);
-    // Force a small delay to ensure state is updated
-    await new Promise(resolve => setTimeout(resolve, 10));
-    return found;
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+        email,
+        password
+      });
+
+      if (response.data.success) {
+        const { user: userData, token } = response.data.data;
+        
+        // Store token and user data
+        localStorage.setItem('auth_token', token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(userData);
+        
+        return userData;
+      } else {
+        throw new Error(response.data.message || 'Login failed');
+      }
+    } catch (error) {
+      let message = 'Login failed';
+      
+      if (error.response?.data?.errors) {
+        // Handle validation errors
+        message = error.response.data.errors.join(', ');
+      } else if (error.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+      
+      throw new Error(message);
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('auth_token');
+    delete axios.defaults.headers.common['Authorization'];
     setUser(null);
     navigate('/login');
+  };
+
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/auth/profile`, profileData);
+      
+      if (response.data.success) {
+        setUser(response.data.data.user);
+        return response.data.data.user;
+      } else {
+        throw new Error(response.data.message || 'Profile update failed');
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Profile update failed';
+      throw new Error(message);
+    }
+  };
+
+  const changePassword = async ({ currentPassword, newPassword }) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/auth/change-password`, {
+        currentPassword,
+        newPassword
+      });
+      
+      if (response.data.success) {
+        return true;
+      } else {
+        throw new Error(response.data.message || 'Password change failed');
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Password change failed';
+      throw new Error(message);
+    }
   };
 
   const value = {
@@ -72,6 +171,8 @@ export const AuthProvider = ({ children }) => {
     signup,
     login,
     logout,
+    updateProfile,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

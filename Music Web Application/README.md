@@ -37,6 +37,17 @@ A beautiful, responsive, and fully functional music streaming web application bu
 - **Liked Songs**: Quick access to your favorites
 - **Recently Played**: Never lose track of what you've heard
 - **Sequential Playback**: Automatic playlist progression with next song logic
+- **Instant Song Removal**: Songs disappear immediately when removed from playlists
+
+### 🔐 **User Authentication**
+- **MongoDB Database**: Secure user management with MongoDB
+- **JWT Tokens**: Industry-standard authentication with JSON Web Tokens
+- **Password Hashing**: bcrypt encryption for secure password storage
+- **Session Persistence**: Stay logged in across browser sessions
+- **User Registration**: Create accounts with name, email, and password
+- **Login System**: Secure authentication with credential validation
+- **Profile Management**: Update user profile and change password
+- **Cross-Device Sync**: Login from any device with same credentials
 
 ## 🚀 Technology Stack
 
@@ -53,6 +64,8 @@ A beautiful, responsive, and fully functional music streaming web application bu
 - **Express.js** - Web framework
 - **MongoDB** - NoSQL database
 - **Mongoose** - MongoDB object modeling
+- **JWT** - JSON Web Token authentication
+- **bcryptjs** - Password hashing
 - **Cloudinary** - Cloud media storage
 - **Multer** - File upload handling
 
@@ -85,6 +98,7 @@ A beautiful, responsive, and fully functional music streaming web application bu
    ```env
    PORT=4000
    MONGODB_URI=mongodb://localhost:27017/musicflow
+   JWT_SECRET=your-super-secret-jwt-key-here
    CLOUDINARY_CLOUD_NAME=your_cloud_name
    CLOUDINARY_API_KEY=your_api_key
    CLOUDINARY_API_SECRET=your_api_secret
@@ -167,6 +181,14 @@ Backend/
 - **Loading States**: Skeleton loaders and progress indicators
 
 ## 🔧 API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
+- `GET /api/auth/profile` - Get user profile (protected)
+- `PUT /api/auth/profile` - Update user profile (protected)
+- `PUT /api/auth/change-password` - Change password (protected)
+- `DELETE /api/auth/account` - Delete user account (protected)
 
 ### Songs
 - `GET /api/song/list` - Get all songs

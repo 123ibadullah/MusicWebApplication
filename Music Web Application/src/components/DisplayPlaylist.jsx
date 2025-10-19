@@ -63,8 +63,9 @@ const DisplayPlaylist = () => {
         ...prevPlaylist,
         songs: prevPlaylist.songs.filter(song => song._id !== songId)
       }));
-      // Also refresh from backend to ensure consistency
-      getPlaylistData();
+      showToast("Song removed from playlist", "success");
+    } else {
+      showToast("Failed to remove song", "error");
     }
     setShowRemoveSong(null);
   };

@@ -48,11 +48,6 @@ const PlayerContextProvider = (props) => {
         setAlbumsData(Array.isArray(albumsRes.data) && albumsRes.data.length > 0 ? albumsRes.data : sampleAlbums);
         setPlaylists(Array.isArray(playlistsRes.data) && playlistsRes.data.length > 0 ? playlistsRes.data : samplePlaylists);
         
-        console.log('Data loaded successfully:', {
-          songs: Array.isArray(songsRes.data) && songsRes.data.length > 0 ? songsRes.data.length : sampleSongs.length,
-          albums: Array.isArray(albumsRes.data) && albumsRes.data.length > 0 ? albumsRes.data.length : sampleAlbums.length,
-          playlists: Array.isArray(playlistsRes.data) && playlistsRes.data.length > 0 ? playlistsRes.data.length : samplePlaylists.length
-        });
       } catch (err) {
         console.log('Backend not available, using sample data:', err.message);
         // Use sample data as fallback
@@ -458,7 +453,7 @@ const PlayerContextProvider = (props) => {
     });
 
     setSearchResults({ songs: matchedSongs, albums: matchedAlbums, playlists: matchedPlaylists });
-  }, [getSafeSongsData, getSafeAlbumsData, getSafePlaylists]);
+  }, []);
 
   // Debounced search: when `searchQuery` changes, run performSearch after a short pause
   useEffect(() => {
@@ -474,7 +469,7 @@ const PlayerContextProvider = (props) => {
     }, 220);
 
     return () => clearTimeout(id);
-  }, [searchQuery, performSearch]);
+  }, [searchQuery]);
 
   // Playlist management
   const createPlaylist = useCallback(
