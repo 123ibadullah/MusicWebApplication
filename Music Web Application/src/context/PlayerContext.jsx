@@ -36,17 +36,34 @@ const PlayerContextProvider = (props) => {
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
         const [songsRes, albumsRes, playlistsRes] = await Promise.all([
-          axios.get(`${url}/api/song`, { signal: controller.signal }).catch(() => ({ data: [] })),
-          axios.get(`${url}/api/album`, { signal: controller.signal }).catch(() => ({ data: [] })),
-          axios.get(`${url}/api/playlist`, { signal: controller.signal }).catch(() => ({ data: [] })),
+          axios.get(`${url}/api/song/list`, { signal: controller.signal }).catch(() => ({ data: [] })),
+          axios.get(`${url}/api/album/list`, { signal: controller.signal }).catch(() => ({ data: [] })),
+          axios.get(`${url}/api/playlist/list`, { signal: controller.signal }).catch(() => ({ data: [] })),
         ]);
         
         clearTimeout(timeoutId);
         
+        // Debug backend responses
+        console.log('Backend songs response structure:', Object.keys(songsRes.data || {}));
+        console.log('Backend albums response structure:', Object.keys(albumsRes.data || {}));
+        console.log('Backend playlists response structure:', Object.keys(playlistsRes.data || {}));
+        
         // Use backend data if available, otherwise use sample data
-        setSongsData(Array.isArray(songsRes.data) && songsRes.data.length > 0 ? songsRes.data : sampleSongs);
-        setAlbumsData(Array.isArray(albumsRes.data) && albumsRes.data.length > 0 ? albumsRes.data : sampleAlbums);
-        setPlaylists(Array.isArray(playlistsRes.data) && playlistsRes.data.length > 0 ? playlistsRes.data : samplePlaylists);
+        // Handle different backend response structures
+        const finalSongs = Array.isArray(songsRes.data?.data) && songsRes.data.data.length > 0 ? songsRes.data.data : 
+                          Array.isArray(songsRes.data) && songsRes.data.length > 0 ? songsRes.data : sampleSongs;
+        
+        const finalAlbums = Array.isArray(albumsRes.data?.allAlbums) && albumsRes.data.allAlbums.length > 0 ? albumsRes.data.allAlbums :
+                           Array.isArray(albumsRes.data) && albumsRes.data.length > 0 ? albumsRes.data : sampleAlbums;
+        
+        const finalPlaylists = Array.isArray(playlistsRes.data?.playlists) && playlistsRes.data.playlists.length > 0 ? playlistsRes.data.playlists :
+                              Array.isArray(playlistsRes.data) && playlistsRes.data.length > 0 ? playlistsRes.data : samplePlaylists;
+        
+        console.log('Data loaded - Songs:', finalSongs.length, 'Albums:', finalAlbums.length, 'Playlists:', finalPlaylists.length);
+        
+        setSongsData(finalSongs);
+        setAlbumsData(finalAlbums);
+        setPlaylists(finalPlaylists);
         
       } catch (err) {
         console.log('Backend not available, using sample data:', err.message);
@@ -58,6 +75,7 @@ const PlayerContextProvider = (props) => {
     };
     fetchData();
   }, []);
+  
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
 
   // Player state
@@ -402,6 +420,8 @@ const PlayerContextProvider = (props) => {
     const qRaw = typeof query === 'string' ? query : '';
     const q = qRaw.trim();
     
+    console.log('Search query:', q, 'Available songs:', getSafeSongsData().length);
+    
     if (!q) {
       setSearchResults({ songs: [], albums: [], playlists: [] });
       return;
@@ -452,8 +472,10 @@ const PlayerContextProvider = (props) => {
       return hay.includes(needle);
     });
 
+    console.log('Search results - Songs:', matchedSongs.length, 'Albums:', matchedAlbums.length, 'Playlists:', matchedPlaylists.length);
+    
     setSearchResults({ songs: matchedSongs, albums: matchedAlbums, playlists: matchedPlaylists });
-  }, []);
+  }, [songsData, albumsData, playlists]);
 
   // Debounced search: when `searchQuery` changes, run performSearch after a short pause
   useEffect(() => {
