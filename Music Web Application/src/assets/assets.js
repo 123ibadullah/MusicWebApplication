@@ -26,7 +26,7 @@ export const assets = {
   clock_icon: "/icons/clock.svg",
   
   // Brand
-  spotify_logo: "/icons/spotify-logo.svg"
+  musicflow_logo: "/icons/musicflow-logo.svg"
 };
 
 // Fallback to emojis if icons are missing

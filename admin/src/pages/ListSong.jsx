@@ -14,10 +14,8 @@ const ListSong = () => {
       setLoading(true);
       const response = await axios.get(`${url}/api/song/list`);
       
-      if (Array.isArray(response.data)) {
-        setData(response.data);
-      } else if (response.data.songs) {
-        setData(response.data.songs);
+      if (response.data.success && response.data.data) {
+        setData(response.data.data);
       } else {
         toast.error("Failed to load songs");
         setData([]);

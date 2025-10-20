@@ -98,7 +98,11 @@ const AddAlbum = () => {
         setImage(false);
         setName("");
         setColor("#3B82F6");
-        document.getElementById('image').value = "";
+        // Safely reset file input
+        const imageInput = document.getElementById('image');
+        if (imageInput) {
+          imageInput.value = "";
+        }
       } else {
         toast.error(response.data.message || "Something went wrong");
       }

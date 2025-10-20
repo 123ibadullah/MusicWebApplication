@@ -40,7 +40,7 @@ const AddToPlaylistDropdown = ({ songId, isOpen, onClose }) => {
     try {
       const result = await addSongToPlaylist(playlistId, songId);
       if (result.success) {
-        showToast("Song added to playlist!", "success");
+        // Toast is already shown by addSongToPlaylist function
         onClose();
       } else {
         showToast(result.message || "Failed to add song to playlist.", "error");
@@ -56,26 +56,33 @@ const AddToPlaylistDropdown = ({ songId, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
+        aria-hidden="true"
       />
       
       {/* Modal */}
       <div
         ref={dropdownRef}
-        className="add-to-playlist-modal relative z-10 w-96 max-w-[90vw] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[80vh] overflow-hidden"
+        className="add-to-playlist-modal relative z-10 w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 max-h-[85vh] overflow-hidden transform transition-all duration-300 scale-100"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="playlist-modal-title"
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Add to Playlist</h3>
+            <h3 id="playlist-modal-title" className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              Add to Playlist
+            </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Close modal"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -83,46 +90,53 @@ const AddToPlaylistDropdown = ({ songId, isOpen, onClose }) => {
           
           {playlists.length === 0 ? (
             <div className="text-center py-8">
-              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
                 🎵
               </div>
               <p className="text-gray-600 dark:text-gray-400 mb-2 font-medium">No playlists available</p>
-              <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">Create a playlist first to add songs</p>
+              <p className="text-gray-500 dark:text-gray-500 text-sm mb-6">Create a playlist first to add songs</p>
               <button
                 onClick={() => {
                   onClose();
                   showToast('Create your first playlist from the sidebar!', 'info');
                 }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300 text-sm font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
               >
                 Create Playlist
               </button>
             </div>
           ) : (
-            <div className="space-y-3 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
               {playlists.map((playlist) => (
                 <button
                   key={playlist._id}
                   onClick={() => handleAddToPlaylist(playlist._id)}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 dark:border-gray-600"
+                  className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent group"
+                  aria-label={`Add song to ${playlist.name}`}
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-lg font-bold">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white text-lg font-bold shadow-lg group-hover:shadow-xl transition-shadow duration-300">
                       🎵
                     </div>
-                    <div className="text-left">
+                    <div className="text-left flex-1 min-w-0">
                       <p className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
                         {playlist.name}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {playlist.songs?.length || 0} songs
+                        {playlist.songs?.length || 0} {playlist.songs?.length === 1 ? 'song' : 'songs'}
                       </p>
                     </div>
                   </div>
-                  {isLoading && (
-                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {isLoading ? (
+                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>

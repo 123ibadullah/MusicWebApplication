@@ -10,7 +10,7 @@ export const useAuth = () => {
   return ctx;
 };
 
-const API_BASE_URL = 'http://localhost:4000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('auth_token');
         if (token) {
           // Verify token with backend
-          const response = await axios.get(`${API_BASE_URL}/auth/profile`);
+          const response = await axios.get(`${API_BASE_URL}/api/auth/profile`);
           if (response.data.success) {
             setUser(response.data.data.user);
           } else {
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async ({ name, email, password }) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
         name,
         email,
         password
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async ({ email, password }) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email,
         password
       });
@@ -132,7 +132,7 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (profileData) => {
     try {
-      const response = await axios.put(`${API_BASE_URL}/auth/profile`, profileData);
+      const response = await axios.put(`${API_BASE_URL}/api/auth/profile`, profileData);
       
       if (response.data.success) {
         setUser(response.data.data.user);
@@ -148,7 +148,7 @@ export const AuthProvider = ({ children }) => {
 
   const changePassword = async ({ currentPassword, newPassword }) => {
     try {
-      const response = await axios.put(`${API_BASE_URL}/auth/change-password`, {
+      const response = await axios.put(`${API_BASE_URL}/api/auth/change-password`, {
         currentPassword,
         newPassword
       });

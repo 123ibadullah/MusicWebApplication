@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import axios from "axios";
 import { useToast } from "./ThemeContext";
+import { useAuth } from "./AuthContext";
 // Import sample data for fallback
 import { sampleSongs, sampleAlbums, samplePlaylists } from '../data/sampleData';
 
@@ -20,8 +21,9 @@ const PlayerContextProvider = (props) => {
   const audioRef = useRef();
   const seekBg = useRef();
   const seekBar = useRef();
+  const { isAuthenticated } = useAuth();
 
-  const url = "http://localhost:4000";
+  const url = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
   // Core data states
   const [songsData, setSongsData] = useState([]);
@@ -144,18 +146,41 @@ const PlayerContextProvider = (props) => {
   }, [volume]);
 
   // Add to recently played
-  const addToRecentlyPlayed = useCallback((song) => {
+  const addToRecentlyPlayed = useCallback(async (song) => {
     if (!song?._id) return;
 
+    // Optimistic update - update UI immediately
     setRecentlyPlayed((prev) => {
       const safePrev = Array.isArray(prev) ? prev : [];
       // Remove any existing entry for this song
       const filtered = safePrev.filter((item) => item && item._id !== song._id);
       // Add lastPlayed timestamp to the song copy
       const songWithTime = { ...song, lastPlayed: Date.now() };
-      // Keep most recent first and cap to 15 entries
-      return [songWithTime, ...filtered].slice(0, 15);
+      // Keep most recent first and cap to 5 entries
+      return [songWithTime, ...filtered].slice(0, 5);
     });
+
+    try {
+      // Update backend
+      const response = await axios.post(`${url}/api/song/recently-played`, { songId: song._id });
+      
+      if (!response.data.success) {
+        // Revert optimistic update on failure
+        setRecentlyPlayed((prev) => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          // Remove the song we just added
+          return safePrev.filter((item) => item && item._id !== song._id);
+        });
+      }
+    } catch (error) {
+      console.error("Error adding to recently played:", error);
+      // Revert optimistic update on error
+      setRecentlyPlayed((prev) => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        // Remove the song we just added
+        return safePrev.filter((item) => item && item._id !== song._id);
+      });
+    }
   }, []);
 
   // Use ThemeContext's toast when available
@@ -382,8 +407,7 @@ const PlayerContextProvider = (props) => {
 
   // Like/Unlike functionality
   const toggleLikeSong = useCallback(
-    // Toggle like/unlike for a song
-    (songId) => {
+    async (songId) => {
       if (!songId) {
         showToast("Invalid song ID", "error");
         return;
@@ -398,21 +422,55 @@ const PlayerContextProvider = (props) => {
         return;
       }
       
-      let updatedLikedSongs;
-      if (currentLikedSongs.includes(songId)) {
-        updatedLikedSongs = currentLikedSongs.filter((id) => id !== songId);
+      const isCurrentlyLiked = currentLikedSongs.some(likedSong => 
+        typeof likedSong === 'string' ? likedSong === songId : likedSong._id === songId
+      );
+      
+      // Optimistic update - update UI immediately
+      if (isCurrentlyLiked) {
+        // Unlike the song
+        const updatedLikedSongs = currentLikedSongs.filter(likedSong => 
+          typeof likedSong === 'string' ? likedSong !== songId : likedSong._id !== songId
+        );
+        setLikedSongs(updatedLikedSongs);
         showToast(`Removed "${song.name}" from liked songs`, "info");
       } else {
-        updatedLikedSongs = [...currentLikedSongs, songId];
+        // Like the song
+        const updatedLikedSongs = [...currentLikedSongs, song];
+        setLikedSongs(updatedLikedSongs);
         showToast(`Added "${song.name}" to liked songs`, "success");
       }
-      setLikedSongs(updatedLikedSongs);
+      
+      try {
+        let response;
+        if (isCurrentlyLiked) {
+          // Unlike the song
+          response = await axios.post(`${url}/api/song/unlike`, { songId });
+        } else {
+          // Like the song
+          response = await axios.post(`${url}/api/song/like`, { songId });
+        }
+        
+        if (!response.data.success) {
+          // Revert optimistic update on failure
+          setLikedSongs(currentLikedSongs);
+          showToast(response.data.message || "Failed to update liked songs", "error");
+        }
+      } catch (error) {
+        console.error("Error toggling like:", error);
+        // Revert optimistic update on error
+        setLikedSongs(currentLikedSongs);
+        showToast("Failed to update liked songs", "error");
+      }
     },
     [getSafeLikedSongs, getSafeSongsData, showToast]
   );
 
   const isSongLiked = useCallback((songId) => {
-    return getSafeLikedSongs().includes(songId);
+    const likedSongs = getSafeLikedSongs();
+    return likedSongs.some(likedSong => 
+      typeof likedSong === 'string' ? likedSong === songId : likedSong._id === songId
+    );
   }, [getSafeLikedSongs]);
 
   // Search functionality
@@ -847,11 +905,10 @@ const PlayerContextProvider = (props) => {
     try {
       const response = await axios.get(`${url}/api/song/liked`);
       if (response.data.success) {
-        setLikedSongs(
-          Array.isArray(response.data.likedSongs)
-            ? response.data.likedSongs
-            : []
-        );
+        const likedSongsData = Array.isArray(response.data.likedSongs)
+          ? response.data.likedSongs
+          : [];
+        setLikedSongs(likedSongsData);
         return;
       }
     } catch (error) {
@@ -862,13 +919,48 @@ const PlayerContextProvider = (props) => {
     setLikedSongs([]);
   }, []);
 
+  const getRecentlyPlayed = useCallback(async () => {
+    try {
+      const response = await axios.get(`${url}/api/song/recently-played`);
+      if (response.data.success) {
+        const recentlyPlayedData = Array.isArray(response.data.recentlyPlayed)
+          ? response.data.recentlyPlayed
+          : [];
+        setRecentlyPlayed(recentlyPlayedData);
+        return;
+      }
+    } catch (error) {
+      console.error("Error fetching recently played:", error);
+    }
+
+    // fallback: no recently played initially
+    setRecentlyPlayed([]);
+  }, []);
+
   // Initialize data - only run once on mount
   useEffect(() => {
     getSongsData();
     getAlbumsData();
     getPlaylistsData();
-    getLikedSongs();
-  }, []); // Empty dependency array to run only once
+    
+    // Only load user-specific data if authenticated
+    if (isAuthenticated) {
+      getLikedSongs();
+      getRecentlyPlayed();
+    }
+  }, [isAuthenticated]); // Add isAuthenticated as dependency
+
+  // Reload user data when authentication status changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      getLikedSongs();
+      getRecentlyPlayed();
+    } else {
+      // Clear user data when logged out
+      setLikedSongs([]);
+      setRecentlyPlayed([]);
+    }
+  }, [isAuthenticated, getLikedSongs, getRecentlyPlayed]);
 
   // Audio event handlers
   useEffect(() => {

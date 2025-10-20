@@ -148,11 +148,54 @@ export const removeSong = async (req, res) => {
 export const likeSong = async (req, res) => {
   try {
     const { songId } = req.body;
+    const userId = req.user?.userId; // Get user ID from auth middleware
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
+
+    if (!songId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Song ID is required" 
+      });
+    }
+
+    // Import User model
+    const User = (await import("../models/userModel.js")).default;
+    
+    // Check if song exists
+    const song = await Song.findById(songId);
+    if (!song) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Song not found" 
+      });
+    }
+
+    // Add song to user's liked songs if not already liked
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    if (!user.likedSongs.includes(songId)) {
+      user.likedSongs.push(songId);
+      await user.save();
+    }
+
     res.status(200).json({ 
       success: true, 
-      message: "Song liked" 
+      message: "Song liked successfully" 
     });
   } catch (error) {
+    console.error("Like song error:", error);
     res.status(500).json({ 
       success: false, 
       message: "Error liking song" 
@@ -163,11 +206,43 @@ export const likeSong = async (req, res) => {
 export const unlikeSong = async (req, res) => {
   try {
     const { songId } = req.body;
+    const userId = req.user?.userId; // Get user ID from auth middleware
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
+
+    if (!songId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Song ID is required" 
+      });
+    }
+
+    // Import User model
+    const User = (await import("../models/userModel.js")).default;
+    
+    // Remove song from user's liked songs
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    user.likedSongs = user.likedSongs.filter(id => id.toString() !== songId);
+    await user.save();
+
     res.status(200).json({ 
       success: true, 
-      message: "Song unliked" 
+      message: "Song unliked successfully" 
     });
   } catch (error) {
+    console.error("Unlike song error:", error);
     res.status(500).json({ 
       success: false, 
       message: "Error unliking song" 
@@ -175,16 +250,147 @@ export const unlikeSong = async (req, res) => {
   }
 };
 
-export const getLikedSongs = async (req, res) => {
+export const addToRecentlyPlayed = async (req, res) => {
   try {
+    const { songId } = req.body;
+    const userId = req.user?.userId; // Get user ID from auth middleware
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
+
+    if (!songId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Song ID is required" 
+      });
+    }
+
+    // Import User model
+    const User = (await import("../models/userModel.js")).default;
+    
+    // Check if song exists
+    const song = await Song.findById(songId);
+    if (!song) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Song not found" 
+      });
+    }
+
+    // Get user and update recently played
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Remove song if already in recently played
+    user.recentlyPlayed = user.recentlyPlayed.filter(item => item.song.toString() !== songId);
+    
+    // Add song to beginning of recently played
+    user.recentlyPlayed.unshift({
+      song: songId,
+      playedAt: new Date()
+    });
+
+    // Keep only last 5 songs
+    user.recentlyPlayed = user.recentlyPlayed.slice(0, 5);
+    
+    await user.save();
+
     res.status(200).json({ 
       success: true, 
-      likedSongs: [] 
+      message: "Song added to recently played" 
     });
   } catch (error) {
+    console.error("Add to recently played error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error adding to recently played" 
+    });
+  }
+};
+
+export const getLikedSongs = async (req, res) => {
+  try {
+    const userId = req.user?.userId; // Get user ID from auth middleware
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
+
+    // Import User model
+    const User = (await import("../models/userModel.js")).default;
+    
+    // Get user with populated liked songs
+    const user = await User.findById(userId).populate('likedSongs');
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      likedSongs: user.likedSongs || [] 
+    });
+  } catch (error) {
+    console.error("Get liked songs error:", error);
     res.status(500).json({ 
       success: false, 
       message: "Error fetching liked songs" 
+    });
+  }
+};
+
+export const getRecentlyPlayed = async (req, res) => {
+  try {
+    const userId = req.user?.userId; // Get user ID from auth middleware
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
+
+    // Import User model
+    const User = (await import("../models/userModel.js")).default;
+    
+    // Get user with populated recently played songs
+    const user = await User.findById(userId).populate('recentlyPlayed.song');
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Sort by playedAt date (most recent first)
+    const recentlyPlayed = user.recentlyPlayed
+      .sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt))
+      .map(item => item.song)
+      .filter(song => song !== null); // Remove any null songs
+
+    res.status(200).json({ 
+      success: true, 
+      recentlyPlayed: recentlyPlayed || [] 
+    });
+  } catch (error) {
+    console.error("Get recently played error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error fetching recently played songs" 
     });
   }
 };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePlayer } from '../context/PlayerContext';
 import SongItem from './SongItem';
 import AlbumItem from './AlbumItem';
@@ -17,6 +17,14 @@ const SearchPage = () => {
   } = usePlayer();
   const [localQuery, setLocalQuery] = useState(searchQuery || '');
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'songs', 'albums', 'playlists'
+  const searchInputRef = useRef(null);
+
+  // Auto-focus search input when component mounts
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, []);
 
   const handleChange = (e) => {
     const q = e.target.value;
@@ -70,6 +78,7 @@ const SearchPage = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input 
+            ref={searchInputRef}
             value={localQuery} 
             onChange={handleChange} 
             onKeyPress={handleKeyPress}
