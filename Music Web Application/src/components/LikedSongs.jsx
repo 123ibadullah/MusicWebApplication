@@ -16,8 +16,17 @@ const LikedSongs = () => {
 
   // Filter and sort liked songs, re-compute on like/unlike
   const filteredLikedSongs = useMemo(() => {
-    // Defensive: filter out undefined/null songs
-    const likedSongsData = songsData.filter(song => song && likedSongs.includes(song._id));
+    // Handle both cases: likedSongs as IDs or as full objects
+    let likedSongsData;
+    
+    if (likedSongs.length > 0 && typeof likedSongs[0] === 'string') {
+      // If likedSongs contains IDs, filter songsData
+      likedSongsData = songsData.filter(song => song && likedSongs.includes(song._id));
+    } else {
+      // If likedSongs contains full objects, use them directly
+      likedSongsData = likedSongs.filter(song => song && song._id);
+    }
+    
     let filtered = likedSongsData.filter(song => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
@@ -101,16 +110,23 @@ const LikedSongs = () => {
           />
         </div>
 
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
-        >
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="name">Name A-Z</option>
-          <option value="album">Album A-Z</option>
-        </select>
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="appearance-none px-6 py-3 pr-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300 cursor-pointer hover:shadow-lg font-semibold text-gray-700 dark:text-gray-300 min-w-[180px]"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="name">Name A-Z</option>
+            <option value="album">Album A-Z</option>
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       {/* Songs Grid */}

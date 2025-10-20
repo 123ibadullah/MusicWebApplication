@@ -33,6 +33,22 @@ const DisplayHome = () => {
 
   const ITEMS_PER_PAGE = 8;
 
+  // Format last played date
+  const formatLastPlayed = (dateString) => {
+    if (!dateString) return "Unknown";
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Unknown";
+    
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return "Just now";
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
+    return date.toLocaleDateString();
+  };
+
   // Memoized filtered data
   const likedSongsData = useMemo(() => 
     songsData.filter(song => likedSongs.includes(song._id)),
@@ -317,15 +333,20 @@ const DisplayHome = () => {
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {getPaginatedData(recentlyPlayed, 'recentlyPlayed').map((song) => (
-              <SongItem
-                key={song._id}
-                image={song.image}
-                name={song.name}
-                desc={song.desc}
-                id={song._id}
-                duration={song.duration}
-                album={song.album}
-              />
+              <div key={song._id} className="relative">
+                <SongItem
+                  image={song.image}
+                  name={song.name}
+                  desc={song.desc}
+                  id={song._id}
+                  duration={song.duration}
+                  album={song.album}
+                />
+                {/* Last Played Badge */}
+                <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                  {formatLastPlayed(song.playedAt)}
+                </div>
+              </div>
             ))}
           </div>
         </section>

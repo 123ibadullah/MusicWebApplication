@@ -376,10 +376,13 @@ export const getRecentlyPlayed = async (req, res) => {
       });
     }
 
-    // Sort by playedAt date (most recent first)
+    // Sort by playedAt date (most recent first) and include playedAt timestamp
     const recentlyPlayed = user.recentlyPlayed
       .sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt))
-      .map(item => item.song)
+      .map(item => ({
+        ...item.song.toObject(),
+        playedAt: item.playedAt
+      }))
       .filter(song => song !== null); // Remove any null songs
 
     res.status(200).json({ 
