@@ -2,10 +2,12 @@
 import React, { useState, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ThemeContext";
+import { usePlayer } from "../context/PlayerContext";
 
 const AlbumItem = memo(({ image, name, desc, id }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { playWithId, songsData } = usePlayer();
   const [imgError, setImgError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -32,8 +34,18 @@ const AlbumItem = memo(({ image, name, desc, id }) => {
   const handlePlayClick = (e) => {
     e.stopPropagation();
     if (safeId) {
-      showToast(`Playing album: ${safeName}`, "info");
-      // In a real app, this would trigger album playback
+      // Find songs from this album
+      const albumSongs = songsData.filter(song => song.album === safeName);
+      
+      if (albumSongs.length > 0) {
+        // Navigate to album page and play first song
+        navigate(`/album/${safeId}`);
+        // Play the first song from the album
+        playWithId(albumSongs[0]._id);
+        showToast(`Playing album: ${safeName}`, "success");
+      } else {
+        showToast("No songs found in this album", "error");
+      }
     } else {
       showToast("Cannot play this album", "error");
     }
@@ -60,12 +72,12 @@ const AlbumItem = memo(({ image, name, desc, id }) => {
           
           {/* Play Button Overlay - Only show if album is available */}
           {safeId && (
-            <div className={`absolute bottom-3 right-3 transform transition-all duration-300 ${
+            <div className={`absolute bottom-3 right-3 transform transition-all duration-300 z-20 ${ 
               isHovered ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-2 opacity-0 scale-95'
             }`}>
               <button 
                 onClick={handlePlayClick}
-                className="w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group/play"
+                className="w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group/play z-20"
               >
                 <svg className="w-5 h-5 text-white ml-0.5 group-hover/play:scale-110 transition-transform" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />

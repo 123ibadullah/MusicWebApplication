@@ -33,7 +33,7 @@ const DisplayPlaylist = () => {
       }
 
       // If not found locally, try backend
-      const response = await axios.get(`http://localhost:4000/api/playlist/${id}`);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/playlist/${id}`);
       if (response.data.success) {
         setPlaylist(response.data.playlist);
       } else {
@@ -63,7 +63,7 @@ const DisplayPlaylist = () => {
         ...prevPlaylist,
         songs: prevPlaylist.songs.filter(song => song._id !== songId)
       }));
-      showToast("Song removed from playlist", "success");
+      // Toast is already shown by removeSongFromPlaylist function
     } else {
       showToast("Failed to remove song", "error");
     }

@@ -27,7 +27,11 @@ const RecentlyPlayed = () => {
     // Sort songs
     switch (sortBy) {
       case "recent":
-        return filtered.sort((a, b) => new Date(b.lastPlayed) - new Date(a.lastPlayed));
+        return filtered.sort((a, b) => {
+          const dateA = a.playedAt || 0;
+          const dateB = b.playedAt || 0;
+          return new Date(dateB) - new Date(dateA);
+        });
       case "name":
         return filtered.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       case "album":
@@ -51,7 +55,11 @@ const RecentlyPlayed = () => {
   };
 
   const formatLastPlayed = (dateString) => {
+    if (!dateString) return "Unknown";
+    
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Unknown";
+    
     const now = new Date();
     const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
     
@@ -107,15 +115,22 @@ const RecentlyPlayed = () => {
           />
         </div>
 
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
-        >
-          <option value="recent">Most Recent</option>
-          <option value="name">Name A-Z</option>
-          <option value="album">Album A-Z</option>
-        </select>
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="appearance-none px-6 py-3 pr-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 cursor-pointer hover:shadow-lg font-semibold text-gray-700 dark:text-gray-300 min-w-[180px]"
+          >
+            <option value="recent">Most Recent</option>
+            <option value="name">Name A-Z</option>
+            <option value="album">Album A-Z</option>
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       {/* Songs Grid */}
@@ -137,7 +152,7 @@ const RecentlyPlayed = () => {
                   />
                   {/* Last Played Badge */}
                   <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
-                    {formatLastPlayed(song.lastPlayed)}
+                    {formatLastPlayed(song.playedAt)}
                   </div>
                 </div>
               </div>

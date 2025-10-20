@@ -5,9 +5,12 @@ import {
   removeSong,
   likeSong,
   unlikeSong,
-  getLikedSongs
+  getLikedSongs,
+  addToRecentlyPlayed,
+  getRecentlyPlayed
 } from "../controllers/songController.js";
 import upload from "../middleware/multer.js";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const songRouter = express.Router();
 
@@ -21,8 +24,10 @@ songRouter.post(
 );
 songRouter.get("/list", listSong);
 songRouter.post("/remove", removeSong);
-songRouter.post("/like", likeSong);
-songRouter.post("/unlike", unlikeSong);
-songRouter.get("/liked", getLikedSongs);
+songRouter.post("/like", authenticateToken, likeSong);
+songRouter.post("/unlike", authenticateToken, unlikeSong);
+songRouter.get("/liked", authenticateToken, getLikedSongs);
+songRouter.post("/recently-played", authenticateToken, addToRecentlyPlayed);
+songRouter.get("/recently-played", authenticateToken, getRecentlyPlayed);
 
 export default songRouter;

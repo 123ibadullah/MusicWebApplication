@@ -112,8 +112,8 @@ const Sidebar = () => {
 
         {/* Library Section - Only show if there are functional items */}
         {libraryMenu.length > 0 && (
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between mb-4">
+          <div className="px-6 py-6 mt-6 border-t border-gray-100/50 dark:border-gray-700/50">
+            <div className="flex items-center justify-between mb-6">
               {!isCollapsed && (
                 <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Your Library
@@ -122,7 +122,7 @@ const Sidebar = () => {
               {!isCollapsed && (
                 <button
                   onClick={handleCreatePlaylist}
-                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300 hover:scale-105"
                   title="Create playlist"
                 >
                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,14 +132,14 @@ const Sidebar = () => {
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {libraryMenu.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleNavigation(item.path)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all duration-300 group ${
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all duration-300 group hover:scale-105 ${
                     location.pathname === item.path
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-200 dark:border-blue-700'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}
                 >
@@ -148,7 +148,11 @@ const Sidebar = () => {
                     {!isCollapsed && <span className="font-medium text-sm">{item.label}</span>}
                   </div>
                   {!isCollapsed && item.count > 0 && (
-                    <span className="bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded-full">
+                    <span className={`text-xs px-3 py-1 rounded-full font-bold ${
+                      location.pathname === item.path
+                        ? 'bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-200'
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+                    }`}>
                       {item.count}
                     </span>
                   )}

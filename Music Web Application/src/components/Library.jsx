@@ -40,7 +40,12 @@ const Library = () => {
         data = playlists;
         break;
       case "liked":
-        data = songsData.filter(song => likedSongs.includes(song._id));
+        // Handle both cases: likedSongs as IDs or as full objects
+        if (likedSongs.length > 0 && typeof likedSongs[0] === 'string') {
+          data = songsData.filter(song => likedSongs.includes(song._id));
+        } else {
+          data = likedSongs.filter(song => song && song._id);
+        }
         break;
       case "recent":
         data = recentlyPlayed;
@@ -88,9 +93,32 @@ const Library = () => {
     { id: "songs", label: "All Songs", count: songsData.length, icon: "🎧" },
     { id: "albums", label: "Albums", count: albumsData.length, icon: "💿" },
     { id: "playlists", label: "Playlists", count: playlists.length, icon: "🎵" },
-    { id: "liked", label: "Liked Songs", count: likedSongs.length, icon: "❤️" },
+    { 
+      id: "liked", 
+      label: "Liked Songs", 
+      count: likedSongs.length > 0 && typeof likedSongs[0] === 'string' 
+        ? likedSongs.length 
+        : likedSongs.filter(song => song && song._id).length, 
+      icon: "❤️" 
+    },
     { id: "recent", label: "Recently Played", count: recentlyPlayed.length, icon: "🕒" },
   ].filter(tab => tab.count > 0);
+
+  // Format last played date
+  const formatLastPlayed = (dateString) => {
+    if (!dateString) return "Unknown";
+    
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Unknown";
+    
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return "Just now";
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
+    return date.toLocaleDateString();
+  };
 
   const renderContent = () => {
     if (isLoading) {
@@ -133,16 +161,24 @@ const Library = () => {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
         {filteredData.map((item, index) => (
-          <div key={item._id || index} className="animate-slide-up" style={{ animationDelay: `${index * 0.1}s` }}>
+          <div key={item._id || index} className="animate-slide-up relative" style={{ animationDelay: `${index * 0.1}s` }}>
             {activeTab === "songs" || activeTab === "liked" || activeTab === "recent" ? (
-              <SongItem
-                image={item.image}
-                name={item.name}
-                desc={item.desc}
-                id={item._id}
-                duration={item.duration}
-                album={item.album}
-              />
+              <>
+                <SongItem
+                  image={item.image}
+                  name={item.name}
+                  desc={item.desc}
+                  id={item._id}
+                  duration={item.duration}
+                  album={item.album}
+                />
+                {/* Show date badge only for recently played songs */}
+                {activeTab === "recent" && (
+                  <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                    {formatLastPlayed(item.playedAt)}
+                  </div>
+                )}
+              </>
             ) : activeTab === "albums" ? (
               <AlbumItem
                 image={item.image}
@@ -198,24 +234,41 @@ const Library = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-full font-medium transition-all duration-300 ${
-              activeTab === tab.id
-                ? 'bg-blue-500 text-white shadow-lg'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            <span>{tab.icon}</span>
-            <span>{tab.label}</span>
-            <span className="bg-white/20 dark:bg-gray-600/20 text-xs px-2 py-1 rounded-full">
-              {tab.count}
-            </span>
-          </button>
-        ))}
+      <div className="relative">
+        <div className="flex flex-wrap gap-3">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`group relative flex items-center space-x-3 px-6 py-4 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 transform ${
+                activeTab === tab.id
+                  ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-xl shadow-blue-500/30'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 shadow-lg hover:shadow-xl'
+              }`}
+            >
+              <span className={`text-xl transition-transform duration-300 ${
+                activeTab === tab.id ? 'scale-110' : 'group-hover:scale-110'
+              }`}>
+                {tab.icon}
+              </span>
+              <span className="text-sm font-bold tracking-wide">
+                {tab.label}
+              </span>
+              <span className={`text-xs px-3 py-1 rounded-full font-bold transition-all duration-300 ${
+                activeTab === tab.id
+                  ? 'bg-white/25 text-white backdrop-blur-sm'
+                  : 'bg-gradient-to-r from-blue-100 to-purple-100 dark:from-gray-600 dark:to-gray-500 text-gray-700 dark:text-gray-200'
+              }`}>
+                {tab.count}
+              </span>
+              
+              {/* Active indicator */}
+              {activeTab === tab.id && (
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full opacity-80"></div>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Search */}
