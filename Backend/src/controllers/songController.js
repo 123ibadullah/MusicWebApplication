@@ -290,8 +290,8 @@ export const addToRecentlyPlayed = async (req, res) => {
       });
     }
 
-    // Remove song if already in recently played
-    user.recentlyPlayed = user.recentlyPlayed.filter(item => item.song.toString() !== songId);
+    // Remove song if already in recently played (and clean up any null references)
+    user.recentlyPlayed = user.recentlyPlayed.filter(item => item.song && item.song.toString() !== songId);
     
     // Add song to beginning of recently played
     user.recentlyPlayed.unshift({
@@ -378,12 +378,12 @@ export const getRecentlyPlayed = async (req, res) => {
 
     // Sort by playedAt date (most recent first) and include playedAt timestamp
     const recentlyPlayed = user.recentlyPlayed
+      .filter(item => item.song !== null && item.song !== undefined) // Remove null songs first
       .sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt))
       .map(item => ({
         ...item.song.toObject(),
         playedAt: item.playedAt
-      }))
-      .filter(song => song !== null); // Remove any null songs
+      }));
 
     res.status(200).json({ 
       success: true, 

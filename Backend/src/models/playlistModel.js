@@ -9,9 +9,14 @@ const playlistSchema = new mongoose.Schema({
     type: String, 
     default: "My playlist" 
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   songs: [{ 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Song'  // FIX: Reference 'Song' with capital S
+    ref: 'Song'
   }],
   createdAt: { 
     type: Date, 

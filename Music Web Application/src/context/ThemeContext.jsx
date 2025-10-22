@@ -24,12 +24,21 @@ const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const showToast = (message, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, 3000);
+    // Prevent duplicate messages
+    setToasts(prev => {
+      const isDuplicate = prev.some(toast => toast.message === message && toast.type === type);
+      if (isDuplicate) return prev;
+      
+      const id = Date.now() + Math.random(); // More unique ID
+      const newToast = { id, message, type };
+      
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        setToasts(current => current.filter(toast => toast.id !== id));
+      }, 3000);
+      
+      return [...prev, newToast];
+    });
   };
 
   const removeToast = (id) => {

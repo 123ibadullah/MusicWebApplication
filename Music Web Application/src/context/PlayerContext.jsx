@@ -13,7 +13,7 @@ import axios from "axios";
 import { useToast } from "./ThemeContext";
 import { useAuth } from "./AuthContext";
 // Import sample data for fallback
-import { sampleSongs, sampleAlbums, samplePlaylists } from '../data/sampleData';
+import { sampleSongs, sampleAlbums } from '../data/sampleData';
 
 export const PlayerContext = createContext();
 
@@ -59,7 +59,7 @@ const PlayerContextProvider = (props) => {
                            Array.isArray(albumsRes.data) && albumsRes.data.length > 0 ? albumsRes.data : sampleAlbums;
         
         const finalPlaylists = Array.isArray(playlistsRes.data?.playlists) && playlistsRes.data.playlists.length > 0 ? playlistsRes.data.playlists :
-                              Array.isArray(playlistsRes.data) && playlistsRes.data.length > 0 ? playlistsRes.data : samplePlaylists;
+                              Array.isArray(playlistsRes.data) && playlistsRes.data.length > 0 ? playlistsRes.data : [];
         
         console.log('Data loaded - Songs:', finalSongs.length, 'Albums:', finalAlbums.length, 'Playlists:', finalPlaylists.length);
         
@@ -72,7 +72,7 @@ const PlayerContextProvider = (props) => {
         // Use sample data as fallback
         setSongsData(sampleSongs);
         setAlbumsData(sampleAlbums);
-        setPlaylists(samplePlaylists);
+        setPlaylists([]);
       }
     };
     fetchData();
@@ -113,33 +113,39 @@ const PlayerContextProvider = (props) => {
   const getSafeRecentlyPlayed = () =>
     Array.isArray(recentlyPlayed) ? recentlyPlayed : [];
 
-  // Load data from localStorage
+  // Load data from localStorage - only if not authenticated (use backend data when logged in)
   useEffect(() => {
-    try {
-      const savedLikedSongs = localStorage.getItem("likedSongs");
-      const savedRecentlyPlayed = localStorage.getItem("recentlyPlayed");
-      const savedVolume = localStorage.getItem("volume");
+    if (!isAuthenticated) {
+      try {
+        const savedLikedSongs = localStorage.getItem("likedSongs");
+        const savedRecentlyPlayed = localStorage.getItem("recentlyPlayed");
+        const savedVolume = localStorage.getItem("volume");
 
-      if (savedLikedSongs) setLikedSongs(JSON.parse(savedLikedSongs));
-      if (savedRecentlyPlayed)
-        setRecentlyPlayed(JSON.parse(savedRecentlyPlayed));
-      if (savedVolume) setVolume(parseInt(savedVolume));
-    } catch (error) {
-      console.error("Error loading from localStorage:", error);
+        if (savedLikedSongs) setLikedSongs(JSON.parse(savedLikedSongs));
+        if (savedRecentlyPlayed)
+          setRecentlyPlayed(JSON.parse(savedRecentlyPlayed));
+        if (savedVolume) setVolume(parseInt(savedVolume));
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+      }
     }
-  }, []);
+  }, [isAuthenticated]);
 
-  // Save to localStorage
+  // Save to localStorage - only for non-authenticated users
   useEffect(() => {
-    localStorage.setItem("likedSongs", JSON.stringify(getSafeLikedSongs()));
-  }, [likedSongs, getSafeLikedSongs]);
+    if (!isAuthenticated) {
+      localStorage.setItem("likedSongs", JSON.stringify(getSafeLikedSongs()));
+    }
+  }, [likedSongs, isAuthenticated]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "recentlyPlayed",
-      JSON.stringify(getSafeRecentlyPlayed())
-    );
-  }, [recentlyPlayed, getSafeRecentlyPlayed]);
+    if (!isAuthenticated) {
+      localStorage.setItem(
+        "recentlyPlayed",
+        JSON.stringify(getSafeRecentlyPlayed())
+      );
+    }
+  }, [recentlyPlayed, isAuthenticated]);
 
   useEffect(() => {
     localStorage.setItem("volume", volume.toString());
@@ -154,8 +160,8 @@ const PlayerContextProvider = (props) => {
       const safePrev = Array.isArray(prev) ? prev : [];
       // Remove any existing entry for this song
       const filtered = safePrev.filter((item) => item && item._id !== song._id);
-      // Add lastPlayed timestamp to the song copy
-      const songWithTime = { ...song, lastPlayed: Date.now() };
+      // Add playedAt timestamp to the song copy (matches backend format)
+      const songWithTime = { ...song, playedAt: new Date().toISOString() };
       // Keep most recent first and cap to 5 entries
       return [songWithTime, ...filtered].slice(0, 5);
     });
@@ -594,6 +600,18 @@ const PlayerContextProvider = (props) => {
         return { success: false };
       }
 
+      // Check if this is a sample playlist (IDs like 'p1', 'p2', etc.)
+      if (playlistId.startsWith('p') && playlistId.length <= 3) {
+        showToast("Sample playlists cannot be deleted. Please log in to create and manage your own playlists.", "info");
+        return { success: false };
+      }
+
+      // Check if user is authenticated
+      if (!isAuthenticated) {
+        showToast("Please log in to delete playlists", "error");
+        return { success: false };
+      }
+
       try {
         const response = await axios.delete(
           `${url}/api/playlist/delete/${playlistId}`
@@ -618,13 +636,25 @@ const PlayerContextProvider = (props) => {
         return { success: false, message };
       }
     },
-    [showToast]
+    [showToast, isAuthenticated]
   );
 
   const addSongToPlaylist = useCallback(
     async (playlistId, songId) => {
       if (!playlistId || !songId) {
         showToast("Invalid playlist or song ID", "error");
+        return { success: false };
+      }
+
+      // Check if this is a sample playlist
+      if (playlistId.startsWith('p') && playlistId.length <= 3) {
+        showToast("Sample playlists cannot be modified. Please log in to create your own playlists.", "info");
+        return { success: false };
+      }
+
+      // Check if user is authenticated
+      if (!isAuthenticated) {
+        showToast("Please log in to add songs to playlists", "error");
         return { success: false };
       }
 
@@ -704,13 +734,25 @@ const PlayerContextProvider = (props) => {
         return { success: false, message };
       }
     },
-    [showToast, songsData]
+    [showToast, songsData, isAuthenticated]
   );
 
   const removeSongFromPlaylist = useCallback(
     async (playlistId, songId) => {
       if (!playlistId || !songId) {
         showToast("Invalid playlist or song ID", "error");
+        return { success: false };
+      }
+
+      // Check if this is a sample playlist
+      if (playlistId.startsWith('p') && playlistId.length <= 3) {
+        showToast("Sample playlists cannot be modified. Please log in to create your own playlists.", "info");
+        return { success: false };
+      }
+
+      // Check if user is authenticated
+      if (!isAuthenticated) {
+        showToast("Please log in to remove songs from playlists", "error");
         return { success: false };
       }
 
@@ -778,7 +820,7 @@ const PlayerContextProvider = (props) => {
         return { success: false, message };
       }
     },
-    [showToast]
+    [showToast, isAuthenticated]
   );
 
   // Data fetching
@@ -866,40 +908,25 @@ const PlayerContextProvider = (props) => {
   }, []);
 
   const getPlaylistsData = useCallback(async () => {
+    // Only fetch playlists if authenticated
+    if (!isAuthenticated) {
+      setPlaylists([]);
+      return;
+    }
+
     try {
       const response = await axios.get(`${url}/api/playlist/list`);
       if (response.data.success) {
         const pls = Array.isArray(response.data.playlists) ? response.data.playlists : [];
-        if (!pls || pls.length === 0) {
-          try {
-            const sampleModule = await import('../data/sampleData');
-            setPlaylists(sampleModule.samplePlaylists);
-            return;
-          } catch (impErr) {
-            console.warn('No sample playlists available', impErr);
-          }
-        }
         setPlaylists(pls);
       } else {
-        // fallback
-        try {
-          const sampleModule = await import('../data/sampleData');
-          setPlaylists(sampleModule.samplePlaylists);
-        } catch (impErr) {
-          setPlaylists([]);
-        }
+        setPlaylists([]);
       }
     } catch (error) {
       console.error("Error fetching playlists:", error);
-      try {
-        const sampleModule = await import('../data/sampleData');
-        setPlaylists(sampleModule.samplePlaylists);
-      } catch (impErr) {
-        console.error('No sample playlists available', impErr);
-        setPlaylists([]);
-      }
+      setPlaylists([]);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const getLikedSongs = useCallback(async () => {
     try {
@@ -926,6 +953,7 @@ const PlayerContextProvider = (props) => {
         const recentlyPlayedData = Array.isArray(response.data.recentlyPlayed)
           ? response.data.recentlyPlayed
           : [];
+        console.log("✅ Recently played loaded:", recentlyPlayedData.length, "songs");
         setRecentlyPlayed(recentlyPlayedData);
         return;
       }
@@ -937,21 +965,13 @@ const PlayerContextProvider = (props) => {
     setRecentlyPlayed([]);
   }, []);
 
-  // Initialize data - only run once on mount
+  // Initialize data on mount and when authentication changes
   useEffect(() => {
     getSongsData();
     getAlbumsData();
     getPlaylistsData();
     
-    // Only load user-specific data if authenticated
-    if (isAuthenticated) {
-      getLikedSongs();
-      getRecentlyPlayed();
-    }
-  }, [isAuthenticated]); // Add isAuthenticated as dependency
-
-  // Reload user data when authentication status changes
-  useEffect(() => {
+    // Load user-specific data if authenticated
     if (isAuthenticated) {
       getLikedSongs();
       getRecentlyPlayed();
@@ -960,7 +980,7 @@ const PlayerContextProvider = (props) => {
       setLikedSongs([]);
       setRecentlyPlayed([]);
     }
-  }, [isAuthenticated, getLikedSongs, getRecentlyPlayed]);
+  }, [isAuthenticated]); // Run when authentication status changes
 
   // Audio event handlers
   useEffect(() => {

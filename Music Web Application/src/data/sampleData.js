@@ -88,11 +88,3 @@ export const sampleAlbums = [
   }
 ];
 
-export const samplePlaylists = [
-  {
-    _id: 'p1',
-    name: 'Chill Hits',
-    desc: 'Relaxing tracks',
-    songs: ['s1','s3']
-  }
-];

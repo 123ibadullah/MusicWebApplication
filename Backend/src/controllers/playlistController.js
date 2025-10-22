@@ -4,11 +4,23 @@ import Song from "../models/songModel.js";
 export const createPlaylist = async (req, res) => {
   try {
     const { name, description } = req.body;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
+    
     const playlist = new Playlist({
       name,
-      description: description || "My playlist"
+      description: description || "My playlist",
+      user: userId
     });
     await playlist.save();
+    
+    console.log(`✅ Playlist created for user ${userId}:`, name);
     res.status(201).json({ success: true, playlist });
   } catch (error) {
     console.error("Error creating playlist:", error);
@@ -18,9 +30,18 @@ export const createPlaylist = async (req, res) => {
 
 export const getPlaylists = async (req, res) => {
   try {
-    console.log("Fetching playlists...");
-    const playlists = await Playlist.find().populate('songs');
-    console.log(`Found ${playlists.length} playlists`);
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
+    
+    console.log(`Fetching playlists for user: ${userId}`);
+    const playlists = await Playlist.find({ user: userId }).populate('songs');
+    console.log(`Found ${playlists.length} playlists for user ${userId}`);
     res.status(200).json({ success: true, playlists });
   } catch (error) {
     console.error("Error fetching playlists:", error);
@@ -34,10 +55,27 @@ export const getPlaylists = async (req, res) => {
 
 export const getPlaylistById = async (req, res) => {
   try {
-    const playlist = await Playlist.findById(req.params.id).populate('songs');
-    if (!playlist) {
-      return res.status(404).json({ success: false, message: "Playlist not found" });
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
     }
+    
+    const playlist = await Playlist.findOne({ 
+      _id: req.params.id, 
+      user: userId 
+    }).populate('songs');
+    
+    if (!playlist) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Playlist not found or access denied" 
+      });
+    }
+    
     res.status(200).json({ success: true, playlist });
   } catch (error) {
     console.error("Error fetching playlist:", error);
@@ -48,15 +86,26 @@ export const getPlaylistById = async (req, res) => {
 export const addSongToPlaylist = async (req, res) => {
   try {
     const { playlistId, songId } = req.body;
+    const userId = req.user?.userId;
     
-    console.log("Adding song to playlist:", { playlistId, songId });
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
     
-    const playlist = await Playlist.findById(playlistId);
+    console.log("Adding song to playlist:", { playlistId, songId, userId });
+    
+    const playlist = await Playlist.findOne({ _id: playlistId, user: userId });
     const song = await Song.findById(songId);
     
     if (!playlist) {
-      console.log("Playlist not found:", playlistId);
-      return res.status(404).json({ success: false, message: "Playlist not found" });
+      console.log("Playlist not found or access denied:", playlistId);
+      return res.status(404).json({ 
+        success: false, 
+        message: "Playlist not found or access denied" 
+      });
     }
     
     if (!song) {
@@ -86,12 +135,24 @@ export const addSongToPlaylist = async (req, res) => {
 export const deletePlaylist = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("Deleting playlist:", id);
+    const userId = req.user?.userId;
     
-    const playlist = await Playlist.findByIdAndDelete(id);
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
+    
+    console.log("Deleting playlist:", id, "for user:", userId);
+    
+    const playlist = await Playlist.findOneAndDelete({ _id: id, user: userId });
     if (!playlist) {
-      console.log("Playlist not found for deletion:", id);
-      return res.status(404).json({ success: false, message: "Playlist not found" });
+      console.log("Playlist not found for deletion or access denied:", id);
+      return res.status(404).json({ 
+        success: false, 
+        message: "Playlist not found or access denied" 
+      });
     }
     
     console.log("Playlist deleted successfully:", id);
@@ -105,14 +166,25 @@ export const deletePlaylist = async (req, res) => {
 export const removeSongFromPlaylist = async (req, res) => {
   try {
     const { playlistId, songId } = req.body;
+    const userId = req.user?.userId;
     
-    console.log("Removing song from playlist:", { playlistId, songId });
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not authenticated" 
+      });
+    }
     
-    const playlist = await Playlist.findById(playlistId);
+    console.log("Removing song from playlist:", { playlistId, songId, userId });
+    
+    const playlist = await Playlist.findOne({ _id: playlistId, user: userId });
     
     if (!playlist) {
-      console.log("Playlist not found for removal:", playlistId);
-      return res.status(404).json({ success: false, message: "Playlist not found" });
+      console.log("Playlist not found for removal or access denied:", playlistId);
+      return res.status(404).json({ 
+        success: false, 
+        message: "Playlist not found or access denied" 
+      });
     }
 
     // Remove the song from the playlist
@@ -145,6 +217,27 @@ export const testPlaylist = async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Cleanup old playlists without user field
+export const cleanupOldPlaylists = async (req, res) => {
+  try {
+    console.log("🧹 Cleaning up old playlists without user field...");
+    
+    // Delete all playlists that don't have a user field
+    const result = await Playlist.deleteMany({ user: { $exists: false } });
+    
+    console.log(`✅ Deleted ${result.deletedCount} old playlists`);
+    
+    res.status(200).json({ 
+      success: true, 
+      message: `Deleted ${result.deletedCount} old playlists without user field`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error("Error cleaning up playlists:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
