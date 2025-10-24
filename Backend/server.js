@@ -24,7 +24,13 @@ connectCloudinary();
 
 // Middlewares
 app.use(express.json());
-app.use(cors());
+
+app.use(cors({
+  origin: ["https://music-web-application-jgj7.vercel.app/"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 
 // Test routes
 app.get("/api/test", (req, res) => {
